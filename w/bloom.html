@@ -1,0 +1,272 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 Braulio Reyes Costales. All rights reserved.
+  Licensed only for use inside purchased Notion templates. Copying, modifying,
+  redistributing or reselling this widget is prohibited. See LICENSE.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminal Bloom widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Figtree:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap">
+<style>
+
+/* Layout: a Notion-dark "bench" with each widget in its own frame at the size it will be embedded */
+:root {
+  color-scheme: dark;
+  --page: #141416;        /* bench behind the frames */
+  --notion: #191919;      /* Notion dark page color, what the widget sits on */
+  --card: #202022;
+  --line: #2e2e33;
+  --ink: #e9e7f0;
+  --muted: #8d8a99;
+  --moon: #f2d8a2;        /* warm moon accent */
+  --dusk: #9aa6ff;        /* cool periwinkle accent */
+  --phosphor: #8ee6a0;    /* terminal green, spider widget only */
+  --display: "Fraunces", Georgia, serif;
+  --body: "Figtree", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box }
+
+
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg, #191919); color: var(--ink); font-family: var(--body); overflow: hidden;
+  display: grid; place-items: center; -webkit-font-smoothing: antialiased; }
+button { font: inherit; cursor: pointer }
+button:focus-visible { outline: 2px solid var(--dusk); outline-offset: 2px }
+.frame { background: transparent; border: 0; border-radius: 0 }
+.fit { transform-origin: center center; }
+@keyframes blink { 50% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .ffprompt .cursor { animation: none } }
+
+/* ---------- Terminal spider (fastfetch style) ---------- */
+.ff { --hi: #dcd6e4; --lo: #2a2631; --a: #9c92b0; --lab: #a497bd; --box: #5f6470; --win: rgba(10,10,13,.9);
+  background:
+    radial-gradient(1px 1px at 12% 18%, #fff5 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 9%, #fff4 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 70%, #fff4 50%, transparent 51%),
+    radial-gradient(1px 1px at 33% 92%, #fff3 50%, transparent 51%),
+    radial-gradient(110% 90% at 85% 25%, #1d1726 0%, transparent 62%),
+    #07070a;
+  padding: 26px clamp(10px, 3vw, 28px) }
+.ff.aurora { --hi: #d9e6d2; --lo: #1f2a22; --a: #8fae86; --lab: #a9c68a; --box: #5c6a60; --win: rgba(8,11,9,.9);
+  background:
+    radial-gradient(70% 60% at 85% 10%, #18261a 0%, transparent 60%),
+    #060807 }
+.ffwin { background: var(--win); border: 1px solid #ffffff1f; border-radius: 10px; overflow: hidden; backdrop-filter: blur(6px) }
+.fftab { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: #00000040; font-size: 12px; color: #ddd }
+.fftab .tab { background: #ffffff12; padding: 5px 12px; border-radius: 7px 7px 0 0; display: flex; gap: 8px; align-items: center }
+.fftab .tab::before { content: ">_"; font-family: var(--mono); font-size: 10px; color: var(--lab) }
+.fftab .ctl { margin-left: auto; letter-spacing: 14px; color: #bbb; font-size: 11px }
+.ffbody { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 22px; padding: 14px 18px 16px; align-items: start }
+.ffbody canvas { display: block; max-width: 100% }
+.ffpanel { font-family: var(--mono); font-size: 12.5px; line-height: 1.42; color: #e8e6ef; white-space: pre; overflow-x: auto; min-width: 0; margin: 0 }
+.ffpanel .l { color: var(--lab) } .ffpanel .x { color: var(--box) } .ffpanel .bar { color: var(--a) } .ffpanel .dim { color: #8b879a }
+.ffpanel .t { color: var(--lab) }
+.ffprompt { grid-column: 1 / -1; font-family: var(--mono); font-size: 12.5px; color: #e8e6ef; margin-top: 6px }
+.ffprompt .cursor { display: inline-block; width: 8px; height: 2px; background: var(--box); vertical-align: -2px; animation: blink 1s steps(1) infinite }
+.fftheme { display: flex; gap: 6px }
+.fftheme button { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; font-size: 12px }
+.fftheme button[aria-pressed="true"] { background: var(--ink); color: var(--notion) }
+@media (max-width: 680px) { .ffbody { grid-template-columns: minmax(0, 1fr) } .ffbody canvas { margin-inline: auto } }
+@keyframes blink { 50% { opacity: 0 } }
+
+
+body{display:block} .frame.ff{position:fixed;inset:0;display:grid;place-items:center;padding:clamp(8px,3vw,28px)} body.solo .ffpanel, body.solo .ffprompt{display:none} body.solo .ffbody{grid-template-columns:auto}
+</style>
+</head>
+<body>
+<div class="frame ff aurora" id="ff2">
+        <div class="ffwin fit">
+          <div class="fftab"><span class="tab">pwsh · garden</span><span class="ctl" aria-hidden="true">─□✕</span></div>
+          <div class="ffbody">
+            <canvas id="flower" aria-label="3D flower drawn with text characters, spinning"></canvas>
+            <pre class="ffpanel" id="ffpanel2"></pre>
+            <div class="ffprompt">PS C:\Users\gardener&gt; <span class="cursor"></span></div>
+          </div>
+        </div>
+      </div>
+<script>
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const pad = n => String(n).padStart(2, "0");
+
+
+/* ---------- 3D terminal flower ---------- */
+(() => {
+  const cv = document.getElementById("flower"), x = cv.getContext("2d");
+  const panel = document.getElementById("ffpanel2");
+  const COLS = 64, ROWS = 32, CW = 7, CH = 12.4, K = CW / CH;
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = COLS * CW * dpr; cv.height = ROWS * CH * dpr;
+  cv.style.width = COLS * CW + "px"; cv.style.height = ROWS * CH + "px";
+  x.scale(dpr, dpr);
+
+  const RAMP = ".,-~:;=!*#$@";
+  const UNIT = 0.14, YOFF = 0.25, TILT = 0.78;
+  const ct = Math.cos(TILT), stt = Math.sin(TILT);
+  const norm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const LIGHT = norm([-0.5, 0.8, -0.5]);
+  // material palettes: [shadow, highlight]
+  const MATS = [
+    [[46, 22, 34], [242, 168, 196]],   // petals: dusty rose
+    [[44, 34, 16], [232, 198, 122]],   // center: old gold
+    [[18, 30, 22], [150, 190, 132]],   // stem and leaves: sage
+  ];
+  const SHADES = MATS.map(([lo, hi]) => RAMP.split("").map((_, i) => {
+    const k = i / (RAMP.length - 1); return `rgb(${lo.map((v, j) => Math.round(v + (hi[j] - v) * k)).join(",")})`;
+  }));
+
+  function ellipsoid(X, Y, Z, rx, ry, rz) {
+    const k0 = Math.hypot(X / rx, Y / ry, Z / rz), k1 = Math.hypot(X / (rx * rx), Y / (ry * ry), Z / (rz * rz));
+    return k1 === 0 ? -Math.min(rx, ry, rz) : k0 * (k0 - 1) / k1;
+  }
+  function capsule(px, py, pz, a, b, r0, r1) {
+    const vx = b[0] - a[0], vy = b[1] - a[1], vz = b[2] - a[2], wx = px - a[0], wy = py - a[1], wz = pz - a[2];
+    const h = Math.max(0, Math.min(1, (wx * vx + wy * vy + wz * vz) / (vx * vx + vy * vy + vz * vz)));
+    return Math.hypot(wx - vx * h, wy - vy * h, wz - vz * h) - (r0 + (r1 - r0) * h);
+  }
+  const smin = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; };
+
+  // one petal in its own frame: pointing along +x, cupped (bent up toward the tip)
+  function petal(px, py, pz, ang, dist, lift, tilt, len, wid) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    let X = px * c + pz * s, Z = -px * s + pz * c, Y = py - lift;      // rotate into petal direction
+    X -= dist;
+    const ctl = Math.cos(tilt), stl = Math.sin(tilt);
+    const X2 = X * ctl + Y * stl, Y2 = -X * stl + Y * ctl;            // tilt upward
+    const bend = X2 * X2 * 0.18;                                       // cup the tip upward
+    return ellipsoid(X2, Y2 - bend, Z, len, 0.07 + Math.max(0, 0.05 - Math.abs(Z) * 0.04), wid);
+  }
+
+  let sway = 0, bloom = 1;
+  function parts(px, py, pz) {
+    // gentle sway: bend the whole plant around its base
+    // bloom only: tip the whole flower head gently instead of swaying a stem
+    const sc = Math.cos(sway * 0.25), ss = Math.sin(sway * 0.25);
+    const qx = px * sc - py * ss; py = px * ss + py * sc; px = qx;
+    const hb = Math.hypot(px, py - 0.35, pz) - 2.75;              // cheap bound around the bloom
+    let pet = hb, center = hb;
+    if (hb < 0.2) {
+      pet = Infinity;
+      for (let i = 0; i < 9; i++) pet = Math.min(pet, petal(px, py, pz, i * Math.PI * 2 / 9, 1.05 * bloom, 0.05, 0.3, 1.25 * bloom, 0.58));
+      for (let i = 0; i < 7; i++) pet = Math.min(pet, petal(px, py, pz, i * Math.PI * 2 / 7 + 0.4, 0.55, 0.22, 0.9, 0.72, 0.42));
+      center = ellipsoid(px, py - 0.24, pz, 0.46, 0.26, 0.46);
+    }
+    return [pet, center, Infinity];
+  }
+  function sdf(px, py, pz) { const p = parts(px, py, pz); return Math.min(p[0], p[1]); }
+
+  function draw(t) {
+    x.clearRect(0, 0, COLS * CW, ROWS * CH);
+    x.font = `${CH * 0.9}px "DM Mono", ui-monospace, Menlo, monospace`;
+    x.textBaseline = "top";
+    const spin = reduce ? 0.6 : t * (Math.PI * 2 / 12);   // one turn every 12 seconds
+    const cs = Math.cos(spin), sn = Math.sin(spin);
+    sway = reduce ? 0 : Math.sin(t * 1.3) * 0.5;
+    bloom = reduce ? 1 : 0.94 + Math.sin(t * 0.9) * 0.06;  // petals breathe open and closed
+
+    const toWorld = (X, Y, Z) => { const y1 = Y * ct - Z * stt, z1 = Y * stt + Z * ct; return [X * cs + z1 * sn, y1, -X * sn + z1 * cs]; };
+    const Lw = toWorld(...LIGHT), dir = toWorld(0, 0, 1), E = 0.012;
+    const buckets = MATS.map(() => RAMP.split("").map(() => []));
+
+    for (let r = 0; r < ROWS; r++) {
+      const sy = (ROWS / 2 - (r + 0.5)) * UNIT + YOFF;
+      for (let c = 0; c < COLS; c++) {
+        const sx = ((c + 0.5) - COLS / 2) * K * UNIT;
+        if (sx * sx + (sy - 0.25) * (sy - 0.25) > 7.6) continue;
+        const o = toWorld(sx, sy, -6);
+        let tt = 0, hit = false, p;
+        for (let i = 0; i < 64 && tt < 12; i++) {
+          p = [o[0] + dir[0] * tt, o[1] + dir[1] * tt, o[2] + dir[2] * tt];
+          const d = sdf(p[0], p[1], p[2]);
+          if (d < 0.006) { hit = true; break; }
+          tt += Math.max(d * 0.85, 0.008);
+        }
+        if (!hit) continue;
+        let n = norm([
+          sdf(p[0] + E, p[1], p[2]) - sdf(p[0] - E, p[1], p[2]),
+          sdf(p[0], p[1] + E, p[2]) - sdf(p[0], p[1] - E, p[2]),
+          sdf(p[0], p[1], p[2] + E) - sdf(p[0], p[1], p[2] - E),
+        ]);
+        const facing = n[0] * dir[0] + n[1] * dir[1] + n[2] * dir[2];
+        if (facing > 0) n = n.map(v => -v);              // thin petals: light whichever side we see
+        const lam = Math.max(0, n[0] * Lw[0] + n[1] * Lw[1] + n[2] * Lw[2]);
+        const rim = Math.pow(1 - Math.abs(facing), 3) * 0.2;
+        const pp = parts(p[0], p[1], p[2]);
+        const m = pp[1] < pp[0] ? 1 : 0;
+        const b = Math.min(1, 0.1 + lam * 0.78 + rim);
+        buckets[m][Math.min(RAMP.length - 1, Math.floor(b * RAMP.length))].push(c, r);
+      }
+    }
+    buckets.forEach((mat, m) => mat.forEach((cells, i) => {
+      if (!cells.length) return;
+      x.fillStyle = SHADES[m][i];
+      for (let j = 0; j < cells.length; j += 2) x.fillText(RAMP[i], cells[j] * CW, cells[j + 1] * CH);
+    }));
+  }
+
+  // ----- info panel (live data only) -----
+  const opened = new Date();
+  const bar = (p, n = 14) => { const f = Math.round(p * n); return `<span class="x">[</span><span class="bar">${"■".repeat(f)}</span><span class="dim">${"·".repeat(n - f)}</span><span class="x">]</span> ${String(Math.round(p * 100)).padStart(3)}%`; };
+  const box = (title, w) => { const left = Math.floor((w - title.length - 2) / 2); return `<span class="x">┌${"─".repeat(left)} </span><span class="t">${title}</span><span class="x"> ${"─".repeat(w - left - title.length - 2)}┐</span>`; };
+  const end = w => `<span class="x">└${"─".repeat(w)}┘</span>`;
+  const row = (k, v) => `<span class="x">├─</span> <span class="l">${k.padEnd(9)}</span>${v}`;
+  const SEASONS = ["winter", "winter", "spring", "spring", "spring", "summer", "summer", "summer", "fall", "fall", "fall", "winter"];
+  function renderPanel() {
+    const d = new Date(), y = d.getFullYear();
+    const yStart = new Date(y, 0, 1), yEnd = new Date(y + 1, 0, 1);
+    const mStart = new Date(y, d.getMonth(), 1), mEnd = new Date(y, d.getMonth() + 1, 1);
+    const wd = (d.getDay() + 6) % 7, dayFrac = (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86400;
+    const P = { YEAR: (d - yStart) / (yEnd - yStart), MONTH: (d - mStart) / (mEnd - mStart), WEEK: (wd + dayFrac) / 7, DAY: dayFrac };
+    const on = Math.floor((d - opened) / 1000), h = d.getHours();
+    const hello = h < 5 ? "Bonne nuit." : h < 12 ? "Bonjour!" : h < 18 ? "Bon après-midi." : "Bonsoir!";
+    const W = 32;
+    panel.innerHTML = [
+      `Hey, <span class="l">gardener</span>`, "",
+      box("Growth", W), ...Object.entries(P).map(([k, p]) => row(k, bar(p))), end(W), "",
+      box("Session", W),
+      row("OPENED", `${pad(opened.getHours())}:${pad(opened.getMinutes())}`),
+      row("ON PAGE", `${pad(Math.floor(on / 3600))}h ${pad(Math.floor(on / 60) % 60)}m ${pad(on % 60)}s`),
+      end(W), "",
+      box("Season / Date", W),
+      row("SEASON", SEASONS[d.getMonth()]),
+      row("DATE", `${y}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}  ${pad(h)}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`),
+      end(W), "",
+      `<span style="color:#d8a7bd">${hello}</span>`, "",
+      ["#9a98a6", "#e8e6ef", "#33d6d0", "#d36bff", "#3b6bff", "#ffc23b", "#43e06b", "#ff4d4d"].map(c => `<span style="color:${c}">●</span>`).join(" ")
+    ].join("\n");
+  }
+  renderPanel(); setInterval(renderPanel, 1000);
+  if (reduce) { document.fonts?.ready.then(() => draw(0)); draw(0); }
+  else { let last = 0; const loop = ms => { if (ms - last > 110) { draw(ms / 1000); last = ms; } requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+})();
+
+if (new URLSearchParams(location.search).get("theme") === "nebula") document.getElementById("ff2").classList.remove("aurora");
+
+
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg) document.body.style.setProperty("--bg", bg === "transparent" ? "transparent" : (/^[0-9a-f]{3,8}$/i.test(bg) ? "#" + bg : bg));
+  const MAX = 1.8;
+  const el = document.querySelector(".fit");
+  function fit() {
+    if (!el) return;
+    document.body.classList.toggle("solo", q.get("solo") === "1" || (q.get("solo") !== "0" && innerWidth < 600 && true));
+    el.style.transform = "none";
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const pad = 0.94;
+    const s = Math.max(0.2, Math.min(innerWidth * pad / w, innerHeight * pad / h, MAX));
+    el.style.transform = `scale(${s})`;
+  }
+  addEventListener("resize", fit); fit();
+  document.fonts && document.fonts.ready.then(fit);
+})();
+
+</script>
+</body>
+</html>

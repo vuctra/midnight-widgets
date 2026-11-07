@@ -1,0 +1,126 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 Braulio Reyes Costales. All rights reserved.
+  Licensed only for use inside purchased Notion templates. Copying, modifying,
+  redistributing or reselling this widget is prohibited. See LICENSE.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Figtree:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap">
+<style>
+
+/* Layout: a Notion-dark "bench" with each widget in its own frame at the size it will be embedded */
+:root {
+  color-scheme: dark;
+  --page: #141416;        /* bench behind the frames */
+  --notion: #191919;      /* Notion dark page color, what the widget sits on */
+  --card: #202022;
+  --line: #2e2e33;
+  --ink: #e9e7f0;
+  --muted: #8d8a99;
+  --moon: #f2d8a2;        /* warm moon accent */
+  --dusk: #9aa6ff;        /* cool periwinkle accent */
+  --phosphor: #8ee6a0;    /* terminal green, spider widget only */
+  --display: "Fraunces", Georgia, serif;
+  --body: "Figtree", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box }
+
+
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg, #191919); color: var(--ink); font-family: var(--body); overflow: hidden;
+  display: grid; place-items: center; -webkit-font-smoothing: antialiased; }
+button { font: inherit; cursor: pointer }
+button:focus-visible { outline: 2px solid var(--dusk); outline-offset: 2px }
+.frame { background: transparent; border: 0; border-radius: 0 }
+.fit { transform-origin: center center; }
+@keyframes blink { 50% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .ffprompt .cursor { animation: none } }
+
+/* ---------- Clock ---------- */
+.clock { padding: 22px 18px 18px; display: grid; justify-items: center; gap: 12px }
+.clock svg { width: 168px; height: 168px; max-width: 100% }
+.clock .digits { font-family: var(--mono); font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: .02em }
+.clock .digits .sec { color: var(--muted); font-size: 16px }
+.clock .date { font-size: 13px; color: var(--muted); letter-spacing: .04em }
+
+
+
+</style>
+</head>
+<body>
+<div class="fit frame clock">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="94" fill="none" stroke="#2e2e33" stroke-width="1.5"/>
+          <g id="ticks"></g>
+          <line id="hr" x1="100" y1="100" x2="100" y2="56" stroke="#e9e7f0" stroke-width="4" stroke-linecap="round"/>
+          <line id="mn" x1="100" y1="100" x2="100" y2="34" stroke="#e9e7f0" stroke-width="2.5" stroke-linecap="round"/>
+          <line id="sc" x1="100" y1="114" x2="100" y2="24" stroke="#f2d8a2" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="4" fill="#f2d8a2"/>
+        </svg>
+        <div class="digits" id="digits">00:00<span class="sec">:00</span></div>
+        <div class="date" id="date">—</div>
+      </div>
+<script>
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const pad = n => String(n).padStart(2, "0");
+
+
+/* ---------- Clock ---------- */
+(() => {
+  const g = document.getElementById("ticks");
+  for (let i = 0; i < 60; i++) {
+    const big = i % 5 === 0, a = i * 6 * Math.PI / 180;
+    const r1 = big ? 80 : 86, r2 = 90;
+    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    l.setAttribute("x1", 100 + r1 * Math.sin(a)); l.setAttribute("y1", 100 - r1 * Math.cos(a));
+    l.setAttribute("x2", 100 + r2 * Math.sin(a)); l.setAttribute("y2", 100 - r2 * Math.cos(a));
+    l.setAttribute("stroke", big ? "#e9e7f0" : "#4a4852"); l.setAttribute("stroke-width", big ? 2 : 1);
+    g.appendChild(l);
+  }
+  const hr = document.getElementById("hr"), mn = document.getElementById("mn"), sc = document.getElementById("sc");
+  const digits = document.getElementById("digits"), date = document.getElementById("date");
+  const fmt = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" });
+  function tick() {
+    const d = new Date(), ms = d.getMilliseconds();
+    const s = d.getSeconds() + (reduce ? 0 : ms / 1000), m = d.getMinutes() + s / 60, h = (d.getHours() % 12) + m / 60;
+    sc.setAttribute("transform", `rotate(${s * 6} 100 100)`);
+    mn.setAttribute("transform", `rotate(${m * 6} 100 100)`);
+    hr.setAttribute("transform", `rotate(${h * 30} 100 100)`);
+    digits.innerHTML = `${pad(d.getHours())}:${pad(d.getMinutes())}<span class="sec">:${pad(d.getSeconds())}</span>`;
+    date.textContent = fmt.format(d);
+    reduce ? setTimeout(tick, 1000 - ms) : requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+
+
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg) document.body.style.setProperty("--bg", bg === "transparent" ? "transparent" : (/^[0-9a-f]{3,8}$/i.test(bg) ? "#" + bg : bg));
+  const MAX = 1.6;
+  const el = document.querySelector(".fit");
+  function fit() {
+    if (!el) return;
+    document.body.classList.toggle("solo", q.get("solo") === "1" || (q.get("solo") !== "0" && innerWidth < 600 && false));
+    el.style.transform = "none";
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const pad = 0.94;
+    const s = Math.max(0.2, Math.min(innerWidth * pad / w, innerHeight * pad / h, MAX));
+    el.style.transform = `scale(${s})`;
+  }
+  addEventListener("resize", fit); fit();
+  document.fonts && document.fonts.ready.then(fit);
+})();
+
+</script>
+</body>
+</html>

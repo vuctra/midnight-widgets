@@ -1,0 +1,140 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 Braulio Reyes Costales. All rights reserved.
+  Licensed only for use inside purchased Notion templates. Copying, modifying,
+  redistributing or reselling this widget is prohibited. See LICENSE.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Night Sky widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Figtree:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap">
+<style>
+
+/* Layout: a Notion-dark "bench" with each widget in its own frame at the size it will be embedded */
+:root {
+  color-scheme: dark;
+  --page: #141416;        /* bench behind the frames */
+  --notion: #191919;      /* Notion dark page color, what the widget sits on */
+  --card: #202022;
+  --line: #2e2e33;
+  --ink: #e9e7f0;
+  --muted: #8d8a99;
+  --moon: #f2d8a2;        /* warm moon accent */
+  --dusk: #9aa6ff;        /* cool periwinkle accent */
+  --phosphor: #8ee6a0;    /* terminal green, spider widget only */
+  --display: "Fraunces", Georgia, serif;
+  --body: "Figtree", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box }
+
+
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg, #191919); color: var(--ink); font-family: var(--body); overflow: hidden;
+  display: grid; place-items: center; -webkit-font-smoothing: antialiased; }
+button { font: inherit; cursor: pointer }
+button:focus-visible { outline: 2px solid var(--dusk); outline-offset: 2px }
+.frame { background: transparent; border: 0; border-radius: 0 }
+.fit { transform-origin: center center; }
+@keyframes blink { 50% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .ffprompt .cursor { animation: none } }
+
+/* ---------- Night sky banner ---------- */
+.sky { position: relative; height: 170px }
+.sky canvas { position: absolute; inset: 0; width: 100%; height: 100% }
+.sky .greet { position: absolute; left: 24px; bottom: 20px; right: 24px }
+.sky .greet b { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(22px, 3.4vw, 32px); text-wrap: balance }
+.sky .greet span { font-size: 13px; color: var(--muted) }
+
+
+body{display:block} .frame.sky{position:fixed;inset:0;height:auto} .sky .greet{left:clamp(16px,4vw,40px);right:clamp(16px,4vw,40px);bottom:clamp(14px,10vh,32px)}
+</style>
+</head>
+<body>
+<div class="frame sky">
+        <canvas id="sky"></canvas>
+        <div class="greet"><b id="hello">good evening, night owl.</b><span id="hellosub">put the music on and knock out one thing at a time.</span></div>
+      </div>
+<script>
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const pad = n => String(n).padStart(2, "0");
+
+
+/* ---------- Night sky ---------- */
+(() => {
+  const cv = document.getElementById("sky"), x = cv.getContext("2d");
+  let W = 0, H = 0, stars = [], shoot = null, dpr = Math.min(2, devicePixelRatio || 1);
+  function size() {
+    const r = cv.getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = W * dpr; cv.height = H * dpr; x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    stars = Array.from({ length: Math.round(W * H / 900) }, () => ({
+      x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.1 + 0.2,
+      p: Math.random() * Math.PI * 2, s: 0.6 + Math.random() * 1.6
+    }));
+  }
+  function frame(t) {
+    t /= 1000;
+    const g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#0d0f1f"); g.addColorStop(1, "#191919");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    for (const s of stars) {
+      const a = 0.35 + 0.65 * (reduce ? 0.7 : (Math.sin(t * s.s + s.p) + 1) / 2);
+      x.fillStyle = `rgba(233,231,240,${a})`; x.beginPath(); x.arc(s.x, s.y, s.r, 0, 7); x.fill();
+    }
+    // crescent moon
+    const mx = W - 80, my = 54;
+    x.save(); x.shadowColor = "rgba(242,216,162,.55)"; x.shadowBlur = 30;
+    x.fillStyle = "#f2d8a2"; x.beginPath(); x.arc(mx, my, 24, 0, 7); x.fill(); x.restore();
+    x.fillStyle = "#11132a"; x.beginPath(); x.arc(mx + 10, my - 6, 21, 0, 7); x.fill();
+    // shooting star
+    if (!reduce) {
+      if (!shoot && Math.random() < 0.004) shoot = { x: Math.random() * W * 0.6, y: Math.random() * H * 0.3, l: 0 };
+      if (shoot) {
+        shoot.l += 0.02;
+        const sx = shoot.x + shoot.l * 260, sy = shoot.y + shoot.l * 90;
+        const tg = x.createLinearGradient(sx - 70, sy - 24, sx, sy);
+        tg.addColorStop(0, "rgba(154,166,255,0)"); tg.addColorStop(1, `rgba(233,231,240,${1 - shoot.l})`);
+        x.strokeStyle = tg; x.lineWidth = 1.5; x.beginPath(); x.moveTo(sx - 70, sy - 24); x.lineTo(sx, sy); x.stroke();
+        if (shoot.l >= 1) shoot = null;
+      }
+      requestAnimationFrame(frame);
+    }
+  }
+  const h = new Date().getHours();
+  const [a, b] = h < 5 ? ["still up, night owl?", "one more thing, then sleep."]
+    : h < 12 ? ["good morning.", "pick your top 3 before anything else."]
+    : h < 18 ? ["good afternoon.", "halfway there. keep the streak going."]
+    : ["good evening, night owl.", "put the music on and knock out one thing at a time."];
+  document.getElementById("hello").textContent = a;
+  document.getElementById("hellosub").textContent = b;
+  size(); addEventListener("resize", size); requestAnimationFrame(frame);
+})();
+
+
+
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg) document.body.style.setProperty("--bg", bg === "transparent" ? "transparent" : (/^[0-9a-f]{3,8}$/i.test(bg) ? "#" + bg : bg));
+  const MAX = 1;
+  const el = document.querySelector(".fit");
+  function fit() {
+    if (!el) return;
+    document.body.classList.toggle("solo", q.get("solo") === "1" || (q.get("solo") !== "0" && innerWidth < 600 && false));
+    el.style.transform = "none";
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const pad = 0.94;
+    const s = Math.max(0.2, Math.min(innerWidth * pad / w, innerHeight * pad / h, MAX));
+    el.style.transform = `scale(${s})`;
+  }
+  addEventListener("resize", fit); fit();
+  document.fonts && document.fonts.ready.then(fit);
+})();
+
+</script>
+</body>
+</html>

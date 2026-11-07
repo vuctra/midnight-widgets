@@ -1,0 +1,168 @@
+<!doctype html>
+<!--
+  Copyright (c) 2026 Braulio Reyes Costales. All rights reserved.
+  Licensed only for use inside purchased Notion templates. Copying, modifying,
+  redistributing or reselling this widget is prohibited. See LICENSE.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pomodoro widget</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Figtree:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap">
+<style>
+
+/* Layout: a Notion-dark "bench" with each widget in its own frame at the size it will be embedded */
+:root {
+  color-scheme: dark;
+  --page: #141416;        /* bench behind the frames */
+  --notion: #191919;      /* Notion dark page color, what the widget sits on */
+  --card: #202022;
+  --line: #2e2e33;
+  --ink: #e9e7f0;
+  --muted: #8d8a99;
+  --moon: #f2d8a2;        /* warm moon accent */
+  --dusk: #9aa6ff;        /* cool periwinkle accent */
+  --phosphor: #8ee6a0;    /* terminal green, spider widget only */
+  --display: "Fraunces", Georgia, serif;
+  --body: "Figtree", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box }
+
+
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg, #191919); color: var(--ink); font-family: var(--body); overflow: hidden;
+  display: grid; place-items: center; -webkit-font-smoothing: antialiased; }
+button { font: inherit; cursor: pointer }
+button:focus-visible { outline: 2px solid var(--dusk); outline-offset: 2px }
+.frame { background: transparent; border: 0; border-radius: 0 }
+.fit { transform-origin: center center; }
+@keyframes blink { 50% { opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .ffprompt .cursor { animation: none } }
+
+/* ---------- Pomodoro ---------- */
+.pomo { padding: 18px; display: grid; gap: 16px; justify-items: center }
+.modes { display: flex; gap: 6px; background: var(--card); padding: 4px; border-radius: 999px }
+.modes button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; border-radius: 999px; font-size: 12.5px }
+.modes button[aria-pressed="true"] { background: var(--ink); color: var(--notion) }
+.ring { position: relative; width: 190px; height: 190px; max-width: 100% }
+.ring svg { width: 100%; height: 100% }
+.ring .t { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 2px }
+.ring .time { font-family: var(--mono); font-size: 40px; font-variant-numeric: tabular-nums }
+.ring .sub { font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase }
+.controls { display: flex; gap: 10px }
+.controls .go { background: var(--moon); color: #1b1710; border: 0; padding: 9px 26px; border-radius: 999px; font-weight: 600 }
+.controls .reset { background: var(--card); color: var(--ink); border: 1px solid var(--line); padding: 9px 14px; border-radius: 999px }
+.rounds { display: flex; gap: 6px }
+.rounds i { width: 8px; height: 8px; border-radius: 50%; background: var(--line) }
+.rounds i.on { background: var(--moon) }
+
+
+
+</style>
+</head>
+<body>
+<div class="fit frame pomo">
+        <div class="modes" role="group" aria-label="Timer mode">
+          <button id="m-focus" aria-pressed="true" data-min="25" data-name="focus">Focus</button>
+          <button id="m-short" aria-pressed="false" data-min="5" data-name="short break">Short</button>
+          <button id="m-long" aria-pressed="false" data-min="15" data-name="long break">Long</button>
+        </div>
+        <div class="ring">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <circle cx="100" cy="100" r="88" fill="none" stroke="#2e2e33" stroke-width="6"/>
+            <circle id="arc" cx="100" cy="100" r="88" fill="none" stroke="#9aa6ff" stroke-width="6" stroke-linecap="round" transform="rotate(-90 100 100)"/>
+          </svg>
+          <div class="t"><div class="time" id="ptime">25:00</div><div class="sub" id="pmode">focus</div></div>
+        </div>
+        <div class="controls">
+          <button class="go" id="go">Start</button>
+          <button class="reset" id="reset" aria-label="Reset timer">Reset</button>
+        </div>
+        <div class="rounds" aria-label="Rounds completed"><i></i><i></i><i></i><i></i></div>
+      </div>
+<script>
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const pad = n => String(n).padStart(2, "0");
+
+
+/* ---------- Pomodoro ---------- */
+(() => {
+  const arc = document.getElementById("arc"), C = 2 * Math.PI * 88;
+  arc.style.strokeDasharray = C;
+  const timeEl = document.getElementById("ptime"), modeEl = document.getElementById("pmode");
+  const go = document.getElementById("go"), reset = document.getElementById("reset");
+  const dots = [...document.querySelectorAll(".rounds i")];
+  const modeBtns = [...document.querySelectorAll(".modes button")];
+  let total = 25 * 60, left = total, running = false, endAt = 0, rounds = 0, timer = null, mode = modeBtns[0], ctx = null;
+
+  function draw() {
+    timeEl.textContent = `${pad(Math.floor(left / 60))}:${pad(left % 60)}`;
+    arc.style.strokeDashoffset = C * (1 - left / total);
+    arc.setAttribute("stroke", mode.dataset.name === "focus" ? "#9aa6ff" : "#f2d8a2");
+    modeEl.textContent = mode.dataset.name;
+    dots.forEach((d, i) => d.classList.toggle("on", i < rounds));
+    go.textContent = running ? "Pause" : (left < total ? "Resume" : "Start");
+  }
+  function chime() {
+    try {
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      [660, 880, 990].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + i * 0.18;
+        o.frequency.value = f; o.type = "sine";
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.18, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.65);
+      });
+    } catch (e) {}
+  }
+  function setMode(btn) {
+    mode = btn; modeBtns.forEach(b => b.setAttribute("aria-pressed", b === btn));
+    clearInterval(timer); running = false; total = left = +btn.dataset.min * 60; draw();
+  }
+  function loop() {
+    left = Math.max(0, Math.round((endAt - Date.now()) / 1000));
+    if (left === 0) {
+      clearInterval(timer); running = false; chime();
+      if (mode.dataset.name === "focus") { rounds = (rounds % 4) + 1; setMode(rounds === 4 ? modeBtns[2] : modeBtns[1]); }
+      else { if (rounds === 4) rounds = 0; setMode(modeBtns[0]); }
+      return;
+    }
+    draw();
+  }
+  go.addEventListener("click", () => {
+    try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); } catch (e) {}
+    if (running) { clearInterval(timer); running = false; draw(); return; }
+    running = true; endAt = Date.now() + left * 1000; timer = setInterval(loop, 250); draw();
+  });
+  reset.addEventListener("click", () => setMode(mode));
+  modeBtns.forEach(b => b.addEventListener("click", () => setMode(b)));
+  draw();
+})();
+
+
+
+(() => {
+  const q = new URLSearchParams(location.search);
+  const bg = q.get("bg");
+  if (bg) document.body.style.setProperty("--bg", bg === "transparent" ? "transparent" : (/^[0-9a-f]{3,8}$/i.test(bg) ? "#" + bg : bg));
+  const MAX = 1.5;
+  const el = document.querySelector(".fit");
+  function fit() {
+    if (!el) return;
+    document.body.classList.toggle("solo", q.get("solo") === "1" || (q.get("solo") !== "0" && innerWidth < 600 && false));
+    el.style.transform = "none";
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const pad = 0.94;
+    const s = Math.max(0.2, Math.min(innerWidth * pad / w, innerHeight * pad / h, MAX));
+    el.style.transform = `scale(${s})`;
+  }
+  addEventListener("resize", fit); fit();
+  document.fonts && document.fonts.ready.then(fit);
+})();
+
+</script>
+</body>
+</html>
